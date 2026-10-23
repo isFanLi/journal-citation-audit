@@ -1,0 +1,4 @@
+interface:
+  display_name: "期刊引用统计"
+  short_description: "按作者、期刊和可选日期口径核查引用，先提供填写模板并逐条统计"
+  default_prompt: "使用 $journal-citation-audit，先给我一份可填写的引用统计需求模板。"

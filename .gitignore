@@ -1,0 +1,17 @@
+# Local research inputs and outputs never belong in this skill repository.
+work/
+outputs/
+data/
+private/
+.env
+.env.*
+*.xlsx
+*.xls
+*.csv
+*.tsv
+*.pdf
+*.log
+*.zip
+__pycache__/
+.DS_Store
+Thumbs.db
