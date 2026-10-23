@@ -13,12 +13,17 @@ $taskRoot = $PSScriptRoot
 $taskPublicFiles = @(
     'README.md', 'LICENSE', '.gitignore', 'publish.cmd', 'publish.ps1',
     'skills/journal-citation-audit/SKILL.md',
-    'skills/journal-citation-audit/agents/openai.yaml'
+    'skills/journal-citation-audit/agents/openai.yaml',
+    'skills/journal-citation-audit/references/search-and-date-sop.md'
 )
 
 function Invoke-TaskNative {
     param([string]$Executable, [string[]]$Arguments)
-    & $Executable @Arguments
+    $taskNativeArgs = $Arguments
+    if ((Split-Path -Leaf $Executable) -match '^git(?:\.exe)?$') {
+        $taskNativeArgs = @('-c', "safe.directory=$taskRoot") + $Arguments
+    }
+    & $Executable @taskNativeArgs
     if ($LASTEXITCODE -ne 0) { throw "Command failed: $Executable (exit $LASTEXITCODE)" }
 }
 
@@ -89,16 +94,16 @@ try {
     $taskHasRepo = Test-Path -LiteralPath (Join-Path $taskRoot '.git')
     $taskHasOrigin = $false
     if ($taskHasRepo) {
-        $taskOrigin = & $taskGit remote get-url origin 2>$null
+        $taskOrigin = & $taskGit -c "safe.directory=$taskRoot" remote get-url origin 2>$null
         $taskHasOrigin = $LASTEXITCODE -eq 0
         if ($taskHasOrigin -and $taskOrigin.TrimEnd('/') -ne $taskRemote) {
             throw 'This local repository is attached to a different remote. No change was pushed.'
         }
-        $taskTracked = @(& $taskGit ls-files)
+        $taskTracked = @(& $taskGit -c "safe.directory=$taskRoot" ls-files)
         foreach ($taskTrackedFile in $taskTracked) {
             if ($taskTrackedFile -notin $taskPublicFiles) { throw "Unexpected tracked file: $taskTrackedFile" }
         }
-        $taskHistoryEmails = @(& $taskGit log --format=%ae%n%ce 2>$null)
+        $taskHistoryEmails = @(& $taskGit -c "safe.directory=$taskRoot" log --format=%ae%n%ce 2>$null)
         if ($LASTEXITCODE -eq 0 -and @($taskHistoryEmails | Where-Object { $_ -ne 'contributors@example.invalid' }).Count -gt 0) {
             throw 'Existing history contains a non-generic identity. Review it before publishing.'
         }
@@ -117,7 +122,7 @@ try {
     Invoke-TaskNative $taskGit @('config', '--local', 'user.email', 'contributors@example.invalid')
     Invoke-TaskNative $taskGit @('config', '--local', 'commit.gpgsign', 'false')
     Invoke-TaskNative $taskGit (@('add', '--') + $taskPublicFiles)
-    $taskStaged = @(& $taskGit diff --cached --name-only)
+    $taskStaged = @(& $taskGit -c "safe.directory=$taskRoot" diff --cached --name-only)
     foreach ($taskStagedFile in $taskStaged) {
         if ($taskStagedFile -notin $taskPublicFiles) { throw "Unexpected staged file: $taskStagedFile" }
     }
